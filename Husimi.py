@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 def Xhat_op(N): # in regular basis
     X = np.zeros((N,N),dtype=complex)
     for k in range(N):
-        X[(k+1)%N,k] = 1.0 + 0j
+        X[(k+1)%N,k] = 1.0 + 0j    # off diagonal
     return X
 
 # return Zhat as a 2d NxN complex matrix (unitary)
 def Zhat_op(N):  # in regular basis
     Z = np.zeros((N,N),dtype=complex)
     for k in range(N):
-        omegaj = np.exp(2*np.pi*k*1j/N)
+        omegaj = np.exp(2*np.pi*k*1j/N)   # is diagonal!
         Z[k,k] = omegaj
     return Z
     
@@ -43,7 +43,16 @@ def cos_p_op(N):
     return (Xhat_op(N) + Xhat_dagger_op(N))*0.5
 
 def sin_p_op(N):
-    return (Xhat_op(N) - Xhat_dagger_op(N))/(2.0j)
+    return -1*(Xhat_op(N) - Xhat_dagger_op(N))/(2.0j)
+    # minus sign because Xhat = sum omega^-k |k>_F<k|_F
+    
+# construct a parity matrix operator
+def parity_op(n):
+    P = np.zeros((n,n),dtype=complex)
+    for k in range(n):
+        P[(n-k)%n,k] = 1.0
+    return P
+# I find that the parity op is the same in the Fourier basis
 
 # create Dhat, the displacement operator as a function of k,l  
 # returns an NxN complex matrix, is unitary 
@@ -241,14 +250,25 @@ def esort_op(w,vr,op):
 # computes the operator hat h_0, unperturbed hamiltonian
 # much better routine
 def hat_h_0_new(N,a,eps):
-    return a*(np.identity(N) - cos_p_op(N)) - eps*cos_phi_op(N)
+    return a*(np.identity(N,dtype=complex) - cos_p_op(N)) - eps*cos_phi_op(N)
     
 # $\hat h_0 = a(1 - cos \hat (p-b)) - \epsilon \cos \hat \phi$
-#           = a(1 - cos \hat p \cos b - \sin \hat p \sin b) - \epsilon \cos \hat \phi
+#           = a(1 - cos \hat p \cos b - \sin \hat p \sin b) - \epsilon \cos\hat \phi
 # computes the operator hat h_0, unperturbed hamiltonian with b term in it
 def hat_h_0_with_b(N,a,b,eps):
-    return a*(np.identity(N) - cos_p_op(N)*np.cos(b) - sin_p_op(N)*np.sin(b)) \
+    return a*(np.identity(N,dtype=complex) - cos_p_op(N)*np.cos(b) - sin_p_op(N)*np.sin(b)) \
         - eps*cos_phi_op(N)
+        
+# return eigenvalues and eigenvectors of \hat h_0
+# returns eigenvecs and eigenvalues in order of eigenvalues
+def h0_eigs(n,a,b,eps):
+    h0 = hat_h_0_with_b(n,a,b,eps)  # the hamiltonian operator  h_0
+    #h0 = Husimi.hat_h_0_new(n,a,eps)
+    (w,vr)=np.linalg.eigh(h0)   # find eigenvalues and eigenvectors (use eigh for hermitian matrices)
+    iphi = np.argsort(np.real(w))   # sort in order of energy
+    vrsort = vr[:,iphi] # sorted eigenvectors
+    w_sort = np.real(w[iphi]) # h_0 is Hermitian so the eigenvals should be real
+    return w_sort,vrsort
     
     
 # compute the propagator U across tau =0 to 2 pi
